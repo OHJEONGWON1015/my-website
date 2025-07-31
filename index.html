@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>웹 벤치마크 - CPU / 메모리 / GPU 개선 테스트</title>
+  <title>웹 벤치마크 - CPU / 메모리 테스트</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 40px; position: relative; overflow-x: hidden; }
     button { padding: 10px 20px; font-size: 1.1rem; margin: 5px; cursor: pointer; }
@@ -36,11 +36,10 @@
   </style>
 </head>
 <body>
-  <h1>웹 벤치마크: CPU / 메모리 / GPU 테스트</h1>
+  <h1>웹 벤치마크: CPU / 메모리 테스트</h1>
 
   <button id="cpuBtn">🧠 CPU 테스트</button>
   <button id="memBtn">🧠 메모리 테스트</button>
-  <button id="gpuBtn">🎮 GPU 테스트</button>
 
   <div id="result">결과가 여기에 표시됩니다.</div>
   <div class="progress-container" id="progressContainer">
@@ -58,20 +57,17 @@
 
     let cpuResult = null;
     let memResult = null;
-    let gpuResult = null;
+    let memoryArray = null;
 
     function updateResult() {
       let text = '';
       if (cpuResult) text += `🧠 CPU 처리 시간: ${cpuResult} ms\n`;
       if (memResult) text += `🧠 메모리 작업 시간: ${memResult} ms\n`;
-      if (gpuResult) text += `🎮 GPU 프레임 속도: ${gpuResult} FPS\n`;
 
       resultDiv.textContent = text;
 
-      if (cpuResult && memResult && gpuResult) {
-        // 총점: CPU, 메모리는 빠를수록 낮은 ms, GPU는 FPS이므로 높을수록 좋음
-        // 점수로 환산할때 GPU FPS를 10000/FPS 로 반비례 환산해서 CPU,메모리 ms랑 균형 맞춤
-        const total = (10000 / cpuResult) + (10000 / memResult) + gpuResult;
+      if (cpuResult && memResult) {
+        const total = (10000 / cpuResult) + (10000 / memResult);
         const score = total.toFixed(2);
         totalScoreEl.textContent = `🎉 총점: ${score}`;
         totalScoreEl.style.display = "block";
@@ -121,21 +117,28 @@
     document.getElementById("memBtn").onclick = () => {
       resultDiv.textContent = "메모리 테스트 중...";
       totalScoreEl.style.display = "none";
-      // 메모리 읽기/쓰기 반복 작업 시간 측정 (실제 부하 반영)
-      const size = 20 * 1024 * 1024; // 2천만 개 배열 요소 (메모리 적당히 큰 값)
+
+      // 배열이 없으면 생성, 있으면 재사용
+      if (!memoryArray) {
+        try {
+          memoryArray = new Array(20 * 1024 * 1024);
+        } catch(e) {
+          memResult = "메모리 부족";
+          updateResult();
+          return;
+        }
+      }
+
       showProgress(2000, () => {
         try {
-          const arr = new Array(size);
           const start = performance.now();
           for (let repeat = 0; repeat < 5; repeat++) {
-            // 쓰기
-            for (let i = 0; i < size; i += 1000) {
-              arr[i] = Math.random();
+            for (let i = 0; i < memoryArray.length; i += 1000) {
+              memoryArray[i] = Math.random();
             }
-            // 읽기
             let sum = 0;
-            for (let i = 0; i < size; i += 1000) {
-              sum += arr[i];
+            for (let i = 0; i < memoryArray.length; i += 1000) {
+              sum += memoryArray[i];
             }
           }
           const end = performance.now();
@@ -145,31 +148,6 @@
           memResult = "오류";
           updateResult();
         }
-      });
-    };
-
-    document.getElementById("gpuBtn").onclick = () => {
-      resultDiv.textContent = "GPU 테스트 중...";
-      totalScoreEl.style.display = "none";
-
-      // GPU는 3초간 requestAnimationFrame 프레임 수 세기
-      let frames = 0;
-      const duration = 3000;
-      const start = performance.now();
-
-      function frameLoop() {
-        frames++;
-        const now = performance.now();
-        if (now - start < duration) {
-          requestAnimationFrame(frameLoop);
-        } else {
-          const fps = frames / ((now - start) / 1000);
-          gpuResult = fps.toFixed(2);
-          updateResult();
-        }
-      }
-      showProgress(duration, () => {
-        frameLoop();
       });
     };
 
