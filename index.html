@@ -1,77 +1,151 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>정원의 웹사이트</title>
+  <meta charset="UTF-8" />
+  <title>분리형 웹 벤치마크</title>
   <style>
-    body {
-      background-color: #121212;  /* 다크 기본 */
-      color: #f5f5f5;
-      font-family: sans-serif;
-      text-align: center;
-      transition: background-color 0.5s, color 0.5s;
-    }
-    h1 {
-      color: lightblue;
-    }
-    img {
-      width: 200px;
-      border-radius: 20px;
-    }
-    #date, #time {
-      font-size: 1.5rem;
-      margin-top: 20px;
-    }
-    /* 라이트모드일 때 전환되는 스타일 */
-    .light-mode {
-      background-color: #f0f8ff;
-      color: #000;
-    }
-    .light-mode h1 {
-      color: royalblue;
-    }
-    .mode-button {
-      padding: 10px 20px;
-      margin-top: 20px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
+    body { font-family: sans-serif; text-align: center; margin: 40px; }
+    button { padding: 10px 20px; font-size: 1.1rem; margin: 5px; cursor: pointer; }
+    #result { white-space: pre-line; font-size: 1.2rem; margin-top: 20px; }
+    canvas { border: 1px solid #aaa; margin-top: 20px; display: block; margin-left: auto; margin-right: auto; }
   </style>
 </head>
 <body>
-  <h1>정원의 첫 웹사이트</h1>
-  <p>이건 나의 첫 번째 문단입니다.</p>
-  <p>링크도 넣어볼게요 → <a href="https://www.google.com" target="_blank">구글 열기</a></p>
-  <img src="https://via.placeholder.com/150" alt="예시 이미지">
+  <h1>분리형 웹 벤치마크</h1>
 
-  <h2 id="date"></h2>
-  <h2 id="time"></h2>
+  <button id="cpuBtn">CPU 벤치마크 실행</button>
+  <button id="memBtn">메모리 벤치마크 실행</button>
+  <button id="gfxBtn">그래픽 벤치마크 실행</button>
 
-  <!-- 모드 전환 버튼 -->
-  <button id="modeToggle" class="mode-button">☀️ 라이트모드로 보기</button>
+  <div id="result">결과가 여기에 표시됩니다.</div>
+  <canvas id="gfxCanvas" width="400" height="200" style="display:none;"></canvas>
 
   <script>
-    function updateDateTime() {
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('ko-KR');
-      const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
-      document.getElementById('date').textContent = `📅 오늘 날짜: ${dateStr}`;
-      document.getElementById('time').textContent = `🕒 현재 시간: ${timeStr}`;
+    const cpuBtn = document.getElementById('cpuBtn');
+    const memBtn = document.getElementById('memBtn');
+    const gfxBtn = document.getElementById('gfxBtn');
+    const resultDiv = document.getElementById('result');
+    const canvas = document.getElementById('gfxCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 결과 저장용 변수
+    let cpuResult = null;
+    let memResult = null;
+    let gfxResult = null;
+
+    function updateResult() {
+      let text = '';
+
+      if(cpuResult){
+        text += `CPU 점수: ${cpuResult.score} (실행시간: ${cpuResult.duration.toFixed(2)} ms)\n`;
+      }
+      if(memResult){
+        if(memResult.success){
+          text += `메모리 테스트: 성공 (소요시간: ${memResult.duration.toFixed(2)} ms)\n`;
+        } else {
+          text += `메모리 테스트: 실패 (메모리 부족 등)\n`;
+        }
+      }
+      if(gfxResult){
+        text += `그래픽 FPS: ${gfxResult.fps}\n`;
+      }
+
+      // 합산 점수 계산 (간단히 점수 환산해서 합산)
+      if(cpuResult && memResult && gfxResult){
+        // 메모리는 시간 짧을수록 좋은데 점수는 반비례하니 반전
+        const memScore = memResult.success ? (5000 / memResult.duration) : 0;
+        // 그래픽 FPS는 점수로 그대로 사용
+        const gfxScore = gfxResult.fps * 10;
+
+        const totalScore = Number(cpuResult.score) + memScore + gfxScore;
+        text += `\n🎉 총 합산 점수: ${totalScore.toFixed(2)} 🎉`;
+      }
+
+      resultDiv.textContent = text || '벤치마크 결과가 없습니다.';
     }
 
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
-
-    // 다크모드 → 라이트모드 전환 버튼
-    const btn = document.getElementById('modeToggle');
-    btn.addEventListener('click', () => {
-      document.body.classList.toggle('light-mode');
-
-      if (document.body.classList.contains('light-mode')) {
-        btn.textContent = '🌙 다크모드로 보기';
-      } else {
-        btn.textContent = '☀️ 라이트모드로 보기';
+    function cpuBenchmark() {
+      const iterations = 10000000;
+      let count = 0;
+      const startTime = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        count += Math.sqrt(i) * Math.sin(i);
       }
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      const score = (10000 / duration).toFixed(2);
+      cpuResult = { duration, score };
+      updateResult();
+      cpuBtn.disabled = false;
+    }
+
+    function memoryBenchmark() {
+      const size = 50 * 1024 * 1024; // 50MB
+      const startTime = performance.now();
+      try {
+        const arr = new Array(size);
+        for (let i = 0; i < size; i += 1000) {
+          arr[i] = i;
+        }
+      } catch(e) {
+        memResult = { duration: null, success: false };
+        updateResult();
+        memBtn.disabled = false;
+        return;
+      }
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      memResult = { duration, success: true };
+      updateResult();
+      memBtn.disabled = false;
+    }
+
+    function graphicsBenchmark() {
+      canvas.style.display = 'block';
+      const startTime = performance.now();
+      let frames = 0;
+      const maxFrames = 100;
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for(let i = 0; i < 50; i++) {
+          ctx.fillStyle = `hsl(${(frames*5 + i*10) % 360}, 70%, 50%)`;
+          ctx.beginPath();
+          ctx.arc(50 + i*7, 100 + 30*Math.sin(frames*0.1 + i), 15, 0, Math.PI*2);
+          ctx.fill();
+        }
+        frames++;
+        if(frames < maxFrames) {
+          requestAnimationFrame(draw);
+        } else {
+          const endTime = performance.now();
+          const duration = endTime - startTime;
+          const fps = (frames / (duration / 1000)).toFixed(1);
+          gfxResult = { fps };
+          updateResult();
+          gfxBtn.disabled = false;
+          canvas.style.display = 'none';
+        }
+      }
+      draw();
+    }
+
+    cpuBtn.addEventListener('click', () => {
+      cpuBtn.disabled = true;
+      resultDiv.textContent = 'CPU 벤치마크 진행 중...';
+      setTimeout(cpuBenchmark, 100);
+    });
+
+    memBtn.addEventListener('click', () => {
+      memBtn.disabled = true;
+      resultDiv.textContent = '메모리 벤치마크 진행 중...';
+      setTimeout(memoryBenchmark, 100);
+    });
+
+    gfxBtn.addEventListener('click', () => {
+      gfxBtn.disabled = true;
+      resultDiv.textContent = '그래픽 벤치마크 진행 중...';
+      setTimeout(graphicsBenchmark, 100);
     });
   </script>
 </body>
