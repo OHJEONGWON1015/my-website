@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>분리형 웹 벤치마크</title>
+  <title>고부하 웹 벤치마크</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 40px; }
     button { padding: 10px 20px; font-size: 1.1rem; margin: 5px; cursor: pointer; }
@@ -11,14 +11,14 @@
   </style>
 </head>
 <body>
-  <h1>분리형 웹 벤치마크</h1>
+  <h1>고부하 웹 벤치마크</h1>
 
-  <button id="cpuBtn">CPU 벤치마크 실행</button>
-  <button id="memBtn">메모리 벤치마크 실행</button>
-  <button id="gfxBtn">그래픽 벤치마크 실행</button>
+  <button id="cpuBtn">CPU 고부하 벤치마크 실행</button>
+  <button id="memBtn">메모리 고부하 벤치마크 실행</button>
+  <button id="gfxBtn">그래픽 고부하 벤치마크 실행</button>
 
   <div id="result">결과가 여기에 표시됩니다.</div>
-  <canvas id="gfxCanvas" width="400" height="200" style="display:none;"></canvas>
+  <canvas id="gfxCanvas" width="600" height="300" style="display:none;"></canvas>
 
   <script>
     const cpuBtn = document.getElementById('cpuBtn');
@@ -28,7 +28,6 @@
     const canvas = document.getElementById('gfxCanvas');
     const ctx = canvas.getContext('2d');
 
-    // 결과 저장용 변수
     let cpuResult = null;
     let memResult = null;
     let gfxResult = null;
@@ -50,13 +49,9 @@
         text += `그래픽 FPS: ${gfxResult.fps}\n`;
       }
 
-      // 합산 점수 계산 (간단히 점수 환산해서 합산)
       if(cpuResult && memResult && gfxResult){
-        // 메모리는 시간 짧을수록 좋은데 점수는 반비례하니 반전
-        const memScore = memResult.success ? (5000 / memResult.duration) : 0;
-        // 그래픽 FPS는 점수로 그대로 사용
+        const memScore = memResult.success ? (10000 / memResult.duration) : 0;
         const gfxScore = gfxResult.fps * 10;
-
         const totalScore = Number(cpuResult.score) + memScore + gfxScore;
         text += `\n🎉 총 합산 점수: ${totalScore.toFixed(2)} 🎉`;
       }
@@ -64,28 +59,31 @@
       resultDiv.textContent = text || '벤치마크 결과가 없습니다.';
     }
 
+    // CPU 고부하 벤치마크
     function cpuBenchmark() {
-      const iterations = 10000000;
+      const iterations = 200000000; // 2억 반복 (고부하)
       let count = 0;
       const startTime = performance.now();
       for (let i = 0; i < iterations; i++) {
-        count += Math.sqrt(i) * Math.sin(i);
+        count += Math.sqrt(i) * Math.sin(i) * Math.log(i + 1);
       }
       const endTime = performance.now();
       const duration = endTime - startTime;
-      const score = (10000 / duration).toFixed(2);
+      const score = (200000 / duration).toFixed(2);
       cpuResult = { duration, score };
       updateResult();
       cpuBtn.disabled = false;
     }
 
+    // 메모리 고부하 벤치마크
     function memoryBenchmark() {
-      const size = 50 * 1024 * 1024; // 50MB
+      // 100MB 배열 생성 시도 (모바일 환경 대비 조절 가능)
+      const size = /Mobi|Android/i.test(navigator.userAgent) ? 20 * 1024 * 1024 : 100 * 1024 * 1024;
       const startTime = performance.now();
       try {
         const arr = new Array(size);
-        for (let i = 0; i < size; i += 1000) {
-          arr[i] = i;
+        for (let i = 0; i < size; i += 500) {
+          arr[i] = i * Math.random();
         }
       } catch(e) {
         memResult = { duration: null, success: false };
@@ -100,18 +98,28 @@
       memBtn.disabled = false;
     }
 
-    function graphicsBenchmark() {
+    // 그래픽 고부하 벤치마크 (더 복잡한 애니메이션, 200프레임)
+    function graphicsBenchmark(userRefreshRate = 60) {
       canvas.style.display = 'block';
       const startTime = performance.now();
       let frames = 0;
-      const maxFrames = 100;
+      const maxFrames = 200;
+
+      function finishGraphicsBenchmark(frames, duration, userRefreshRate = 60) {
+        const rawFps = frames / (duration / 1000);
+        let correctedFps = rawFps;
+        if(rawFps >= userRefreshRate * 0.95) {
+          correctedFps = rawFps * 0.9;
+        }
+        return correctedFps.toFixed(1);
+      }
 
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for(let i = 0; i < 50; i++) {
-          ctx.fillStyle = `hsl(${(frames*5 + i*10) % 360}, 70%, 50%)`;
+        for(let i = 0; i < 100; i++) {
+          ctx.fillStyle = `hsl(${(frames*3 + i*7) % 360}, 70%, 50%)`;
           ctx.beginPath();
-          ctx.arc(50 + i*7, 100 + 30*Math.sin(frames*0.1 + i), 15, 0, Math.PI*2);
+          ctx.arc(30 + i*6, 150 + 50*Math.sin(frames*0.07 + i), 20, 0, Math.PI*2);
           ctx.fill();
         }
         frames++;
@@ -120,8 +128,8 @@
         } else {
           const endTime = performance.now();
           const duration = endTime - startTime;
-          const fps = (frames / (duration / 1000)).toFixed(1);
-          gfxResult = { fps };
+          const correctedFps = finishGraphicsBenchmark(frames, duration, userRefreshRate);
+          gfxResult = { fps: correctedFps };
           updateResult();
           gfxBtn.disabled = false;
           canvas.style.display = 'none';
@@ -132,20 +140,20 @@
 
     cpuBtn.addEventListener('click', () => {
       cpuBtn.disabled = true;
-      resultDiv.textContent = 'CPU 벤치마크 진행 중...';
+      resultDiv.textContent = 'CPU 고부하 벤치마크 진행 중... 오래 걸릴 수 있습니다.';
       setTimeout(cpuBenchmark, 100);
     });
 
     memBtn.addEventListener('click', () => {
       memBtn.disabled = true;
-      resultDiv.textContent = '메모리 벤치마크 진행 중...';
+      resultDiv.textContent = '메모리 고부하 벤치마크 진행 중... 오래 걸릴 수 있습니다.';
       setTimeout(memoryBenchmark, 100);
     });
 
     gfxBtn.addEventListener('click', () => {
       gfxBtn.disabled = true;
-      resultDiv.textContent = '그래픽 벤치마크 진행 중...';
-      setTimeout(graphicsBenchmark, 100);
+      resultDiv.textContent = '그래픽 고부하 벤치마크 진행 중... 오래 걸릴 수 있습니다.';
+      setTimeout(() => graphicsBenchmark(60), 100);
     });
   </script>
 </body>
