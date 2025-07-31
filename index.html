@@ -59,7 +59,7 @@
     function updateResult() {
       if (cpuResult) {
         resultDiv.textContent = `🧠 CPU 처리 시간: ${cpuResult} ms`;
-        const scaledScore = (10000 / cpuResult) * 600; // 600배 적용
+        const scaledScore = (10000 / cpuResult) * 583; // 583배 적용
         totalScoreEl.textContent = `🎉 총점: ${scaledScore.toFixed(2)}`;
         totalScoreEl.style.display = "block";
         launchFireworks();
