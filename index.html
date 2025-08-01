@@ -6,7 +6,8 @@
   <style>
     body { font-family: sans-serif; text-align: center; margin: 40px; position: relative; overflow-x: hidden; }
     button { padding: 10px 20px; font-size: 1.1rem; margin: 5px; cursor: pointer; }
-    #result { font-size: 1.2rem; margin-top: 20px; }
+    #deviceInfo { font-size: 1rem; margin-bottom: 10px; color: #555; white-space: pre-line; }
+    #result { font-size: 1.2rem; margin-top: 10px; white-space: pre-line; }
     #totalScore { font-size: 2rem; font-weight: bold; color: #e91e63; margin-top: 20px; display: none; }
     .progress-container {
       width: 80%; height: 20px; background: #ddd; border-radius: 10px; margin: 20px auto 5px;
@@ -40,6 +41,7 @@
 
   <button id="cpuBtn">🧠 CPU 테스트</button>
 
+  <div id="deviceInfo">기기 정보를 불러오는 중...</div>
   <div id="result">결과가 여기에 표시됩니다.</div>
   <div class="progress-container" id="progressContainer">
     <div class="progress-bar" id="progressBar"></div>
@@ -48,6 +50,7 @@
   <div id="totalScore"></div>
 
   <script>
+    const deviceInfoEl = document.getElementById("deviceInfo");
     const resultDiv = document.getElementById("result");
     const progressContainer = document.getElementById("progressContainer");
     const progressBar = document.getElementById("progressBar");
@@ -56,11 +59,73 @@
 
     let cpuResult = null;
 
+    function getMaxDeviceInfo() {
+      const ua = navigator.userAgent;
+      const width = window.screen.width;
+      const height = window.screen.height;
+
+      let os = "알 수 없음";
+      let osVersion = "";
+
+      if (/Windows NT 10.0/.test(ua)) { 
+        os = "Windows 10/11"; 
+      }
+      else if (/Windows NT 6.3/.test(ua)) { os = "Windows 8.1"; }
+      else if (/Windows NT 6.2/.test(ua)) { os = "Windows 8"; }
+      else if (/Windows NT 6.1/.test(ua)) { os = "Windows 7"; }
+      else if (/Mac OS X (\d+[_\.]\d+)/.test(ua)) {
+        os = "Mac OS X";
+        osVersion = ua.match(/Mac OS X (\d+[_\.]\d+)/)[1].replace("_", ".");
+      }
+      else if (/Android (\d+(\.\d+)?)/.test(ua)) {
+        os = "Android";
+        osVersion = ua.match(/Android (\d+(\.\d+)?)/)[1];
+      }
+      else if (/iPhone OS (\d+[_\d]*)/.test(ua)) {
+        os = "iOS";
+        osVersion = ua.match(/iPhone OS (\d+[_\d]*)/)[1].replace(/_/g, ".");
+      }
+      else if (/iPad; CPU OS (\d+[_\d]*)/.test(ua)) {
+        os = "iPadOS";
+        osVersion = ua.match(/iPad; CPU OS (\d+[_\d]*)/)[1].replace(/_/g, ".");
+      }
+
+      let device = "알 수 없음";
+      if (/iPhone/.test(ua)) device = "아이폰";
+      else if (/iPad/.test(ua)) device = "아이패드";
+      else if (/Pixel/.test(ua)) device = "구글 픽셀";
+      else if (/Samsung/.test(ua)) device = "삼성 기기";
+      else if (/Macintosh/.test(ua)) device = "Mac";
+      else if (/Windows/.test(ua)) device = "PC";
+
+      let browser = "알 수 없음";
+      let browserVersion = "";
+      if (/Chrome\/(\d+)/.test(ua)) {
+        browser = "Chrome";
+        browserVersion = ua.match(/Chrome\/(\d+)/)[1];
+      }
+      else if (/Firefox\/(\d+)/.test(ua)) {
+        browser = "Firefox";
+        browserVersion = ua.match(/Firefox\/(\d+)/)[1];
+      }
+      else if (/Safari\/(\d+)/.test(ua) && !/Chrome\/(\d+)/.test(ua)) {
+        browser = "Safari";
+        browserVersion = ua.match(/Version\/(\d+)/)?.[1] || "";
+      }
+      else if (/Edg\/(\d+)/.test(ua)) {
+        browser = "Edge";
+        browserVersion = ua.match(/Edg\/(\d+)/)[1];
+      }
+
+      return `운영체제: ${os} ${osVersion}\n기기: ${device}\n브라우저: ${browser} ${browserVersion}\n화면 해상도: ${width}x${height}`;
+    }
+
     function updateResult() {
       if (cpuResult) {
+        deviceInfoEl.textContent = getMaxDeviceInfo();
         resultDiv.textContent = `🧠 CPU 처리 시간: ${cpuResult} ms`;
-        const scaledScore = (10000 / cpuResult) * 583; // 583배 적용
-        totalScoreEl.textContent = `🎉 총점: ${scaledScore.toFixed(2)}`;
+        const scaledScore = Math.round((10000 / cpuResult) * 583);
+        totalScoreEl.textContent = `🎉 총점: ${scaledScore}`;
         totalScoreEl.style.display = "block";
         launchFireworks();
       }
@@ -93,6 +158,7 @@
     document.getElementById("cpuBtn").onclick = () => {
       resultDiv.textContent = "CPU 테스트 중...";
       totalScoreEl.style.display = "none";
+      deviceInfoEl.textContent = getMaxDeviceInfo();
       const start = performance.now();
       showProgress(2000, () => {
         let x = 0;
@@ -116,6 +182,8 @@
         setTimeout(() => dot.remove(), 1000);
       }
     }
+
+    deviceInfoEl.textContent = getMaxDeviceInfo();
   </script>
 </body>
 </html>
