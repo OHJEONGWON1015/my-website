@@ -61,8 +61,6 @@
 
     function getMaxDeviceInfo() {
       const ua = navigator.userAgent;
-      const width = window.screen.width;
-      const height = window.screen.height;
 
       let os = "알 수 없음";
       let osVersion = "";
@@ -117,7 +115,7 @@
         browserVersion = ua.match(/Edg\/(\d+)/)[1];
       }
 
-      return `운영체제: ${os} ${osVersion}\n기기: ${device}\n브라우저: ${browser} ${browserVersion}\n화면 해상도: ${width}x${height}`;
+      return `운영체제: ${os} ${osVersion}\n기기: ${device}\n브라우저: ${browser} ${browserVersion}`;
     }
 
     function updateResult() {
